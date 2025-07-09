@@ -3,6 +3,11 @@ import { checkLineIntersectsCircle } from "./lib/helperFns";
 import { mazes } from "./lib/mazes";
 import type { CellLines, CellType, MazeBlueprint } from "./lib/types";
 
+const queryParams = Object.fromEntries(new URLSearchParams(location.search).entries());
+const mazeIdx = Number(queryParams.maze);
+const mazeBlueprint = mazes[mazeIdx];
+const mazeCells: Cell[][] = [];
+
 const canvas = document.querySelector("#canvas") as SVGSVGElement;
 const loopBtn = document.querySelector("#loop-btn") as HTMLButtonElement;
 
@@ -35,16 +40,23 @@ abstract class Updatable {
 class Player implements Updatable {
   id = "player";
   svg: SVGCircleElement;
-  speed = 0.1;
+  speed = 0.15;
   x: number;
   y: number;
-  currCellPos: [number, number] = [-1, -1];
-  private currCell: Cell;
+  currCell: Cell;
 
-  constructor(x: number, y: number, cell: Cell) {
-    this.x = x;
-    this.y = y;
-    this.currCell = cell;
+  constructor(row: number, col: number) {
+    this.x = col * CELL_SIZE + CELL_SIZE / 2;
+    this.y = row * CELL_SIZE + CELL_SIZE / 2;
+
+    this.currCell = mazeCells[row][col];
+
+    this.svg = document.createElementNS(svgNamespace, "circle");
+    this.svg.setAttribute("r", PLAYER_RADIUS + "px");
+    this.svg.setAttribute("fill", "blue");
+    canvas.append(this.svg);
+
+    this.setPos(this.x, this.y);
 
     document.addEventListener("keydown", (e: KeyboardEvent) => {
       keyMap[e.key] = true;
@@ -52,14 +64,6 @@ class Player implements Updatable {
     document.addEventListener("keyup", (e: KeyboardEvent) => {
       keyMap[e.key] = false;
     });
-
-    this.svg = document.createElementNS(svgNamespace, "circle");
-    this.svg.setAttribute("r", PLAYER_RADIUS + "px");
-    this.svg.setAttribute("fill", "blue");
-
-    this.setPos(x, y);
-
-    canvas.append(this.svg);
   }
 
   setPos(x: number, y: number) {
@@ -67,24 +71,21 @@ class Player implements Updatable {
     this.y = y;
     this.svg.setAttribute("cx", x + "px");
     this.svg.setAttribute("cy", y + "px");
+
+    this.determineCurrCell();
   }
 
-  getCurrCellPos() {
-    const row = Math.trunc(this.x / CELL_SIZE);
-    const col = Math.trunc(this.y / CELL_SIZE);
-
-    if (row !== this.currCellPos[0] || col !== this.currCellPos[1]) {
-      this.onCellPosChanged(row, col);
+  determineCurrCell() {
+    const row = Math.trunc(this.y / CELL_SIZE);
+    const col = Math.trunc(this.x / CELL_SIZE);
+    // console.log("determineCurrCell", this.currCell);
+    if (row !== this.currCell.row || col !== this.currCell.col) {
+      const cell = mazeCells?.[row]?.[col];
+      if (cell) {
+        this.currCell = cell;
+        console.log(this.currCell);
+      }
     }
-  }
-
-  onCellPosChanged(row: number, col: number) {
-    this.currCellPos = [row, col];
-    document.dispatchEvent(new CustomEvent("player-cell", { detail: [row, col] }));
-  }
-
-  setCurrCell(cell: Cell) {
-    this.currCell = cell;
   }
 
   update(deltaTime: number): void {
@@ -110,21 +111,22 @@ class Player implements Updatable {
 
     this.setPos(this.x + dx, this.y + dy);
 
-    this.getCurrCellPos();
+    console.log("currCell", this.currCell);
+    console.log("neighbors", Cell.getNeighbors(this.currCell));
 
-    const playerCircle = { cx: this.x, cy: this.y, r: PLAYER_RADIUS };
+    // const playerCircle = { cx: this.x, cy: this.y, r: PLAYER_RADIUS };
 
-    wallCollision.top = checkLineIntersectsCircle(this.currCell.lines.top, playerCircle);
-    wallCollision.right = checkLineIntersectsCircle(this.currCell.lines.right, playerCircle);
-    wallCollision.bottom = checkLineIntersectsCircle(this.currCell.lines.bottom, playerCircle);
-    wallCollision.left = checkLineIntersectsCircle(this.currCell.lines.left, playerCircle);
+    // wallCollision.top = checkLineIntersectsCircle(this.currCell.lines.top, playerCircle);
+    // wallCollision.right = checkLineIntersectsCircle(this.currCell.lines.right, playerCircle);
+    // wallCollision.bottom = checkLineIntersectsCircle(this.currCell.lines.bottom, playerCircle);
+    // wallCollision.left = checkLineIntersectsCircle(this.currCell.lines.left, playerCircle);
 
-    wallCollision.tl = wallCollision.top && wallCollision.left;
-    wallCollision.tr = wallCollision.top && wallCollision.right;
-    wallCollision.bl = wallCollision.bottom && wallCollision.left;
-    wallCollision.br = wallCollision.bottom && wallCollision.right;
+    // wallCollision.tl = wallCollision.top && wallCollision.left;
+    // wallCollision.tr = wallCollision.top && wallCollision.right;
+    // wallCollision.bl = wallCollision.bottom && wallCollision.left;
+    // wallCollision.br = wallCollision.bottom && wallCollision.right;
 
-    console.log(wallCollision);
+    // console.log(wallCollision);
   }
 }
 
@@ -166,6 +168,19 @@ class Cell {
       console.log("clicked cell", this);
     });
   }
+
+  static getNeighbors(cell: Cell) {
+    return {
+      top: mazeCells?.[cell.row - 1]?.[cell.col] ?? null,
+      right: mazeCells?.[cell.row]?.[cell.col + 1] ?? null,
+      bottom: mazeCells?.[cell.row + 1]?.[cell.col] ?? null,
+      left: mazeCells?.[cell.row]?.[cell.col - 1] ?? null,
+      tr: mazeCells?.[cell.row - 1]?.[cell.col + 1] ?? null,
+      tl: mazeCells?.[cell.row - 1]?.[cell.col - 1] ?? null,
+      br: mazeCells?.[cell.row + 1]?.[cell.col + 1] ?? null,
+      bl: mazeCells?.[cell.row + 1]?.[cell.col - 1] ?? null,
+    };
+  }
 }
 
 class Loop {
@@ -205,31 +220,16 @@ class Loop {
 class Game {
   loop;
   player;
-  mazeBlueprint: MazeBlueprint;
-  cells: Cell[] = [];
 
   constructor() {
-    this.mazeBlueprint = this.loadMaze();
     this.loop = new Loop();
 
     // initialize cells, append them to canvas
-    for (let row = 0; row < this.mazeBlueprint.length; row++) {
-      for (let col = 0; col < this.mazeBlueprint[row].length; col++) {
-        const cell = new Cell(row, col, this.mazeBlueprint[row][col]);
-        this.cells.push(cell);
-        canvas.append(cell.rect);
-      }
-    }
+    this.buildGrid();
 
     // initialize player
-    const initialPos = { row: 1, col: 0 };
-    const initialCell = this.cells.find((c) => c.row === initialPos.row && c.col === initialPos.col);
-    if (!initialCell) throw Error("failed to find initial cell");
-
-    const playerX = initialPos.col * CELL_SIZE + CELL_SIZE / 2;
-    const playerY = initialPos.row * CELL_SIZE + CELL_SIZE / 2;
-
-    this.player = new Player(playerX, playerY, initialCell);
+    const initialPos = { row: 0, col: 0 };
+    this.player = new Player(initialPos.row, initialPos.col);
 
     // append loop btn listeners
     loopBtn.addEventListener("click", () => {
@@ -242,24 +242,21 @@ class Game {
       }
     });
 
-    // listen to player cell changes
-    document.addEventListener("player-cell", (ev) => {
-      console.log("ev", ev);
-      const [x, y] = (ev as any).detail;
-      const playerCell = this.cells.find((c) => c.row === y && c.col === x);
-      if (!playerCell) throw Error("failed to find player cell");
-      this.player.setCurrCell(playerCell);
-    });
-
-    // add  player to loop.updatables
+    // add player to loop.updatables
     this.loop.updatables.push(this.player);
     console.log(this);
   }
 
-  loadMaze() {
-    const queryParams = Object.fromEntries(new URLSearchParams(location.search).entries());
-    const mazeIdx = Number(queryParams.maze);
-    return mazes[mazeIdx];
+  buildGrid() {
+    for (let row = 0; row < mazeBlueprint.length; row++) {
+      mazeCells[row] = [];
+      for (let col = 0; col < mazeBlueprint[row].length; col++) {
+        const cell = new Cell(row, col, mazeBlueprint[row][col]);
+        mazeCells[row].push(cell);
+        canvas.append(cell.rect);
+      }
+    }
+    console.log(mazeCells);
   }
 
   start() {
@@ -273,6 +270,3 @@ class Game {
 
 const game = new Game();
 game.start();
-// const loop = new Loop();
-
-// loop.start();
