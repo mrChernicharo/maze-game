@@ -1,27 +1,8 @@
 // import "./style.css";
 // import typescriptLogo from "./typescript.svg";
 // import viteLogo from "/vite.svg";
-
-enum CellType {
-  wall = "wall",
-  ground = "ground",
-  enemy = "enemy",
-  powerUp = "powerUp",
-  door = "door",
-}
-
-const cellTypesArr = [CellType.wall, CellType.ground, CellType.enemy, CellType.powerUp, CellType.door];
-
-const COLORS = {
-  wall: "#363636",
-  door: "#f9af00",
-  ground: "#cdcdcd",
-  enemy: "#ff0000",
-  powerUp: "#0056ff",
-};
-
-const CELL_SIZE = 20;
-const svgNamespace = "http://www.w3.org/2000/svg";
+import { svgNamespace, MAZE_CELL_SIZE, COLORS, cellTypesArr } from "./lib/constants";
+import { CellType } from "./lib/types";
 
 const rowsInput = document.querySelector<HTMLInputElement>("input#rows")!;
 const colsInput = document.querySelector<HTMLInputElement>("input#cols")!;
@@ -31,7 +12,7 @@ const radioButtons = Array.from(document.getElementsByName("tile-radio")) as Arr
 const outputDisplay = document.querySelector<HTMLOutputElement>("#output")!;
 const outputResult = document.querySelector<HTMLDivElement>("#output-result")!;
 
-class Cell {
+class MazeCell {
   row: number;
   col: number;
   rect: SVGRectElement;
@@ -46,10 +27,10 @@ class Cell {
     this.rect.dataset["col"] = String(this.col);
     this.rect.dataset["row"] = String(this.row);
 
-    this.rect.setAttribute("x", this.col * CELL_SIZE + "px");
-    this.rect.setAttribute("y", this.row * CELL_SIZE + "px");
-    this.rect.setAttribute("width", CELL_SIZE + "px");
-    this.rect.setAttribute("height", CELL_SIZE + "px");
+    this.rect.setAttribute("x", this.col * MAZE_CELL_SIZE + "px");
+    this.rect.setAttribute("y", this.row * MAZE_CELL_SIZE + "px");
+    this.rect.setAttribute("width", MAZE_CELL_SIZE + "px");
+    this.rect.setAttribute("height", MAZE_CELL_SIZE + "px");
     this.rect.setAttribute("stroke", "black");
     this.rect.setAttribute("fill", COLORS[this.type]);
 
@@ -67,7 +48,7 @@ class Cell {
 class Maze {
   private rows: number;
   private cols: number;
-  private cells: Cell[][] = [];
+  private cells: MazeCell[][] = [];
   constructor(rows: number, cols: number) {
     this.rows = rows;
     this.cols = cols;
@@ -115,7 +96,7 @@ class Maze {
         if (existingCell) {
           canvas.append(existingCell.rect);
         } else {
-          const cell = new Cell(row, col);
+          const cell = new MazeCell(row, col);
           this.cells[row].push(cell);
           canvas.append(cell.rect);
         }
