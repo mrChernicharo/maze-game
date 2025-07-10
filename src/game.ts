@@ -100,10 +100,12 @@ class Player implements Updatable {
         const col = Math.trunc(this.x / CELL_SIZE);
         // console.log("determineCurrCell", this.currCell);
         if (row !== this.currCell.row || col !== this.currCell.col) {
+            // cell changed
             const cell = mazeCells?.[row]?.[col];
             if (cell) {
                 this.currCell = cell;
-                console.log(this.currCell);
+                const item = this.currCell.pluckItem();
+                console.log("cell changed ::", item, this.currCell);
             }
         }
     }
@@ -226,10 +228,11 @@ class Cell {
     col: number;
     x: number;
     y: number;
-    rect: SVGRectElement;
     lines: CellLines;
     type: CellType;
-    item: SVGCircleElement | null = null;
+    rect: SVGRectElement;
+    itemElem: SVGCircleElement | null = null;
+    item: GameItem | null = null;
 
     constructor(row: number, col: number, typeNum: number) {
         this.row = row;
@@ -252,13 +255,13 @@ class Cell {
             [CellType.wall, CellType.door].includes(this.type) ? COLORS[this.type] : COLORS.ground
         );
 
-        const cellItem = cellItems[this.type];
-        if (cellItem) {
-            this.item = document.createElementNS(svgNamespace, "circle");
-            this.item.setAttribute("cx", CELL_SIZE / 2 + this.col * CELL_SIZE + "px");
-            this.item.setAttribute("cy", CELL_SIZE / 2 + this.row * CELL_SIZE + "px");
-            this.item.setAttribute("r", cellItem === GameItem.coin ? "8px" : "14px");
-            this.item.setAttribute("fill", cellItem === GameItem.coin ? "gold" : "dodgerblue");
+        this.item = cellItems[this.type] ?? null;
+        if (this.item) {
+            this.itemElem = document.createElementNS(svgNamespace, "circle");
+            this.itemElem.setAttribute("cx", CELL_SIZE / 2 + this.col * CELL_SIZE + "px");
+            this.itemElem.setAttribute("cy", CELL_SIZE / 2 + this.row * CELL_SIZE + "px");
+            this.itemElem.setAttribute("r", this.item === GameItem.coin ? "6px" : "14px");
+            this.itemElem.setAttribute("fill", this.item === GameItem.coin ? "gold" : "dodgerblue");
         }
 
         this.lines = {
@@ -284,6 +287,17 @@ class Cell {
             br: mazeCells?.[cell.row + 1]?.[cell.col + 1] ?? null,
             bl: mazeCells?.[cell.row + 1]?.[cell.col - 1] ?? null,
         };
+    }
+
+    pluckItem() {
+        const item = this.item;
+        if (item) {
+            this.itemElem?.remove();
+            this.item = null;
+            this.itemElem = null;
+            return item;
+        }
+        return null;
     }
 }
 
@@ -358,7 +372,7 @@ class Game {
                 const cell = new Cell(row, col, mazeBlueprint[row][col]);
                 mazeCells[row].push(cell);
                 canvas.append(cell.rect);
-                if (cell.item) canvas.append(cell.item);
+                if (cell.itemElem) canvas.append(cell.itemElem);
             }
         }
         console.log(mazeCells);
