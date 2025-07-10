@@ -12,6 +12,6 @@ export const COLORS = {
 
 export const MAZE_CELL_SIZE = 20;
 export const CELL_SIZE = 50;
-export const PLAYER_RADIUS = 10;
+export const PLAYER_RADIUS = 18;
 
 export const svgNamespace = "http://www.w3.org/2000/svg";
