@@ -47,8 +47,8 @@ const wallCollision: Record<DirectionDiag, boolean> = {
     br: false,
 };
 
-abstract class Updatable {
-    update(deltaTime: number) {}
+interface Updatable {
+    update(deltaTime: number): void;
 }
 
 let enemyCounter = 0;
