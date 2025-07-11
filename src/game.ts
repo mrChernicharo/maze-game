@@ -25,6 +25,9 @@ const cellItems: Partial<Record<CellType, GameItem>> = {
 const canvas = document.querySelector("#canvas") as SVGSVGElement;
 const loopBtn = document.querySelector("#loop-btn") as HTMLButtonElement;
 
+canvas.style.height = mazeBlueprint.length * CELL_SIZE + "px";
+canvas.style.width = mazeBlueprint[0].length * CELL_SIZE + "px";
+
 const keyMap: { [k: string]: boolean } = {
     w: false,
     ArrowUp: false,

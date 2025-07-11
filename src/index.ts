@@ -100,60 +100,65 @@ function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
     );
     // top wall
     maze.unshift(
-        Array(cols)
+        Array(cols + 2)
             .fill(0)
             .map((_, i) => new Cell(0, i))
     );
     // bottom wall
     maze.push(
-        Array(cols)
+        Array(cols + 2)
             .fill(0)
             .map((_, i) => new Cell(maze.length, i))
     );
 
-    for (let row = 0; row < maze.length; row++) {
-        maze[row].unshift(new Cell(0, row)); // left wall
-        maze[row].push(new Cell(maze[0].length - 1, row)); // right wall
+    for (let row = 1; row < maze.length - 1; row++) {
+        maze[row].unshift(new Cell(row, 0)); // left wall
+        maze[row].push(new Cell(row, maze[0].length - 1)); // right wall
     }
     // surround logic end
 
-    // const wallsEligibleForDoors = getDoorCandidates();
+    for (const door of doors) {
+        let candidates: Cell[] = [];
+        if (door === Direction.top) {
+            candidates = maze[0].slice();
+            candidates.shift();
+            candidates.pop();
+        }
+        if (door === Direction.right) {
+            maze.forEach((line, i) => {
+                if (i > 0 && i < line.length - 1) candidates.push(line.at(-1)!);
+            });
+        }
+        if (door === Direction.bottom) {
+            candidates = maze.at(-1)!.slice();
+            candidates.shift();
+            candidates.pop();
+        }
+        if (door === Direction.left) {
+            maze.forEach((line, i) => {
+                if (i > 0 && i < line.length - 1) candidates.push(line[0]);
+            });
+        }
 
-    // while (doors > 0) {
-    //     const randIdx = randRange(0, wallsEligibleForDoors.length - 1);
-    //     const cellToBecomeDoor = wallsEligibleForDoors[randIdx];
+        const filteredCandidates = candidates.filter((c) =>
+            Object.values(Cell.get4Neighbors(c)).some((n) => n && n.value === 1)
+        );
+        if (filteredCandidates.length == 0) {
+            console.warn("could not find a place to stick this door", door);
+            continue;
+        }
+        const randIdx = randRange(0, filteredCandidates.length - 1);
+        const cellToBecomeDoorRef = filteredCandidates[randIdx];
 
-    //     console.log({ wallsEligibleForDoors, cellToBecomeDoor });
+        console.log({ cellToBecomeDoorRef });
+        const actualCell = maze[cellToBecomeDoorRef.row][cellToBecomeDoorRef.col];
+        actualCell.value = 4;
+    }
 
-    //     // make it a door
-    //     cellToBecomeDoor.value = 4;
-    //     wallsEligibleForDoors.splice(randIdx, 1);
-    //     doors--;
-    // }
-
+    console.log(JSON.stringify(maze.map((line) => line.map((cell) => cell.value))));
     console.log(maze.map((line) => line.map((cell) => cell.value)));
+    console.log(maze);
 }
-
-// function getDoorCandidates() {
-//     const doorCandidates: Cell[] = [];
-
-//     maze.forEach((line) =>
-//         line.forEach((cell) => {
-//             if (cell.row === 0 || cell.col === 0 || cell.row === maze.length - 1 || cell.col === maze[0].length - 1) {
-//                 doorCandidates.push(cell);
-//             }
-//         })
-//     );
-
-//     // remove candidates with no path neighbors
-//     return doorCandidates.filter((cell) => {
-//         const { top, right, bottom, left } = Cell.get4Neighbors(cell);
-//         const isValid = [top, right, bottom, left].some((c) => c !== null && c.value === 1);
-//         console.log({ cell }, { top, right, bottom, left }, { isValid });
-
-//         return isValid;
-//     });
-// }
 
 /**
  *
@@ -187,4 +192,5 @@ function drawMazeButtons() {
 
 drawMazeButtons();
 
-createRandomMaze(3, 3, [Direction.top, Direction.left, Direction.bottom, Direction.right]);
+createRandomMaze(12, 12, [Direction.left, Direction.bottom, Direction.right]);
+// createRandomMaze(12, 12, [Direction.top, Direction.left, Direction.bottom, Direction.right]);
