@@ -2,57 +2,60 @@ import { randRange } from "./lib/helperFns.ts";
 import { mazes } from "./lib/mazes.ts";
 import { Direction } from "./lib/types.ts";
 
-const maze: Cell[][] = [];
+const ul = document.querySelector("ul#maze-list") as HTMLUListElement;
+const canvas = document.querySelector("#canvas") as SVGSVGElement;
 
-class Cell {
-    row;
-    col;
-    value = 0;
-    constructor(row: number, col: number) {
-        this.row = row;
-        this.col = col;
+export function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
+    const maze: Cell[][] = [];
+
+    class Cell {
+        row;
+        col;
+        value = 0;
+        constructor(row: number, col: number) {
+            this.row = row;
+            this.col = col;
+        }
+
+        static get4Neighbors(cell: Cell) {
+            return {
+                top: maze?.[cell.row - 1]?.[cell.col] || null,
+                right: maze?.[cell.row]?.[cell.col + 1] || null,
+                bottom: maze?.[cell.row + 1]?.[cell.col] || null,
+                left: maze?.[cell.row]?.[cell.col - 1] || null,
+            };
+        }
+
+        static get8Neighbors(cell: Cell) {
+            return {
+                top: maze?.[cell.row - 1]?.[cell.col] || null,
+                right: maze?.[cell.row]?.[cell.col + 1] || null,
+                bottom: maze?.[cell.row + 1]?.[cell.col] || null,
+                left: maze?.[cell.row]?.[cell.col - 1] || null,
+
+                tl: maze?.[cell.row - 1]?.[cell.col - 1] || null,
+                tr: maze?.[cell.row - 1]?.[cell.col + 1] || null,
+                bl: maze?.[cell.row + 1]?.[cell.col - 1] || null,
+                br: maze?.[cell.row + 1]?.[cell.col + 1] || null,
+            };
+        }
+
+        static canBuildPath(cell: Cell) {
+            // must be a wall cell
+            if (!cell || cell.value !== 0) return false;
+
+            const { tl, top, tr, right, br, bottom, bl, left } = Cell.get8Neighbors(cell);
+
+            // no adjacent cell trio is exclusively made of path cells
+            if (left && tl && top && [left, tl, top].every((c) => c.value === 1)) return false;
+            if (top && tr && right && [top, tr, right].every((c) => c.value === 1)) return false;
+            if (right && br && bottom && [right, br, bottom].every((c) => c.value === 1)) return false;
+            if (bottom && bl && left && [bottom, bl, left].every((c) => c.value === 1)) return false;
+
+            return true;
+        }
     }
 
-    static get4Neighbors(cell: Cell) {
-        return {
-            top: maze?.[cell.row - 1]?.[cell.col] || null,
-            right: maze?.[cell.row]?.[cell.col + 1] || null,
-            bottom: maze?.[cell.row + 1]?.[cell.col] || null,
-            left: maze?.[cell.row]?.[cell.col - 1] || null,
-        };
-    }
-
-    static get8Neighbors(cell: Cell) {
-        return {
-            top: maze?.[cell.row - 1]?.[cell.col] || null,
-            right: maze?.[cell.row]?.[cell.col + 1] || null,
-            bottom: maze?.[cell.row + 1]?.[cell.col] || null,
-            left: maze?.[cell.row]?.[cell.col - 1] || null,
-
-            tl: maze?.[cell.row - 1]?.[cell.col - 1] || null,
-            tr: maze?.[cell.row - 1]?.[cell.col + 1] || null,
-            bl: maze?.[cell.row + 1]?.[cell.col - 1] || null,
-            br: maze?.[cell.row + 1]?.[cell.col + 1] || null,
-        };
-    }
-
-    static canBuildPath(cell: Cell) {
-        // must be a wall cell
-        if (!cell || cell.value !== 0) return false;
-
-        const { tl, top, tr, right, br, bottom, bl, left } = Cell.get8Neighbors(cell);
-
-        // no adjacent cell trio is exclusively made of path cells
-        if (left && tl && top && [left, tl, top].every((c) => c.value === 1)) return false;
-        if (top && tr && right && [top, tr, right].every((c) => c.value === 1)) return false;
-        if (right && br && bottom && [right, br, bottom].every((c) => c.value === 1)) return false;
-        if (bottom && bl && left && [bottom, bl, left].every((c) => c.value === 1)) return false;
-
-        return true;
-    }
-}
-
-function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
     // make initial maze (only walls)
     for (let row = 0; row < rows; row++) {
         maze[row] = [];
@@ -88,7 +91,7 @@ function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
 
         stack.push(chosenCell);
     }
-    // algorithm end
+    // algorithm END
 
     // surround maze with walls
     maze.forEach((line) =>
@@ -115,8 +118,9 @@ function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
         maze[row].unshift(new Cell(row, 0)); // left wall
         maze[row].push(new Cell(row, maze[0].length - 1)); // right wall
     }
-    // surround logic end
+    // surround maze with walls END
 
+    // doors logic
     for (const door of doors) {
         let candidates: Cell[] = [];
         if (door === Direction.top) {
@@ -126,7 +130,7 @@ function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
         }
         if (door === Direction.right) {
             maze.forEach((line, i) => {
-                if (i > 0 && i < line.length - 1) candidates.push(line.at(-1)!);
+                if (i > 0 && i < maze.length - 1) candidates.push(line.at(-1)!);
             });
         }
         if (door === Direction.bottom) {
@@ -136,7 +140,7 @@ function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
         }
         if (door === Direction.left) {
             maze.forEach((line, i) => {
-                if (i > 0 && i < line.length - 1) candidates.push(line[0]);
+                if (i > 0 && i < maze.length - 1) candidates.push(line[0]);
             });
         }
 
@@ -150,47 +154,75 @@ function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
         const randIdx = randRange(0, filteredCandidates.length - 1);
         const cellToBecomeDoorRef = filteredCandidates[randIdx];
 
-        console.log({ cellToBecomeDoorRef });
+        // console.log({ cellToBecomeDoorRef });
         const actualCell = maze[cellToBecomeDoorRef.row][cellToBecomeDoorRef.col];
         actualCell.value = 4;
     }
+    // doors logic END
 
-    console.log(JSON.stringify(maze.map((line) => line.map((cell) => cell.value))));
-    console.log(maze.map((line) => line.map((cell) => cell.value)));
-    console.log(maze);
+    // console.log(JSON.stringify(maze.map((line) => line.map((cell) => cell.value))));
+    // console.log(maze.map((line) => line.map((cell) => cell.value)));
+    // console.log(maze);
+
+    return maze;
 }
 
-/**
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-const ul = document.querySelector("ul#maze-list") as HTMLUListElement;
+function getRandomDoors() {
+    const doors: Direction[] = [];
 
-function drawMazeButtons() {
-    Object.values(mazes).forEach((maze, i) => {
-        const btn = document.createElement("button");
-        btn.textContent = String(i);
-
-        btn.addEventListener("click", () => {
-            location.assign(`game?maze=${i}`);
+    while (doors.length == 0) {
+        Object.values(Direction).forEach((dir) => {
+            const coinFlip = randRange(0, 1);
+            if (coinFlip == 1) doors.push(dir);
         });
-        const li = document.createElement("li");
-        li.append(btn);
-        ul.appendChild(li);
-    });
+    }
+
+    return doors;
 }
 
-drawMazeButtons();
+const mazeCount = 16;
+function generateMazes() {
+    const rowsMinMax = [2, 20];
+    const colsMinMax = [2, 20];
 
-createRandomMaze(12, 12, [Direction.left, Direction.bottom, Direction.right]);
-// createRandomMaze(12, 12, [Direction.top, Direction.left, Direction.bottom, Direction.right]);
+    let counter = 0;
+    while (counter < mazeCount) {
+        counter++;
+
+        const rows = randRange(rowsMinMax[0], rowsMinMax[1]);
+        const cols = randRange(colsMinMax[0], colsMinMax[1]);
+
+        const doors = getRandomDoors();
+
+        const generatedMaze = createRandomMaze(rows, cols, doors);
+
+        console.log(
+            counter,
+            generatedMaze,
+            JSON.stringify(
+                generatedMaze.map((line) => line.map((cell) => cell.value)),
+                null
+            )
+        );
+    }
+}
+
+generateMazes();
+
+// function drawMazeButtons() {
+//     Object.values(mazes).forEach((maze, i) => {
+//         const btn = document.createElement("button");
+//         btn.textContent = String(i);
+
+//         btn.addEventListener("click", () => {
+//             location.assign(`game?maze=${i}`);
+//         });
+//         const li = document.createElement("li");
+//         li.append(btn);
+//         ul.appendChild(li);
+//     });
+// }
+
+// drawMazeButtons();
+
+// createRandomMaze()
