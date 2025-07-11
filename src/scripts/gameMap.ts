@@ -1,8 +1,8 @@
 console.log("hello gameMap");
 import { createRandomMaze } from "./createRandomMaze";
-import { CELL_SIZE, MAP_CELL_SIZE, MINI_MAZE_CELL_SIZE, svgNamespace } from "./lib/constants";
-import { randRange, sleep } from "./lib/helperFns";
-import { Direction } from "./lib/types";
+import { CELL_SIZE, MAP_CELL_SIZE, MINI_MAZE_CELL_SIZE, svgNamespace } from "../lib/constants";
+import { randRange, sleep } from "../lib/helperFns";
+import { Direction } from "../lib/types";
 
 const canvas = document.querySelector<SVGSVGElement>("#canvas")!;
 

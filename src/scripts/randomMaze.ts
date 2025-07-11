@@ -1,11 +1,11 @@
 import { createRandomMaze } from "./createRandomMaze.ts";
-import { CELL_SIZE, COLORS, svgNamespace } from "./lib/constants.ts";
-import { Direction } from "./lib/types.ts";
+import { CELL_SIZE, COLORS, svgNamespace } from "../lib/constants.ts";
+import { Direction } from "../lib/types.ts";
 
 const canvas = document.querySelector("#canvas") as SVGSVGElement;
 const colors = [COLORS.wall, COLORS.ground, COLORS.ground, COLORS.ground, COLORS.door];
 
-const generatedMaze = createRandomMaze(12, 3, [Direction.left, Direction.right, Direction.top]);
+const generatedMaze = createRandomMaze(12, 12, [Direction.left, Direction.right, Direction.top]);
 
 // DRAW to canvas
 canvas.style.height = generatedMaze.length * CELL_SIZE + "px";

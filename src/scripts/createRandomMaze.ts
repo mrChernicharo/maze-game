@@ -1,5 +1,5 @@
-import { randRange } from "./lib/helperFns";
-import { Direction } from "./lib/types";
+import { randRange } from "../lib/helperFns";
+import { Direction } from "../lib/types";
 
 export function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
     const maze: Cell[][] = [];

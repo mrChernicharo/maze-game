@@ -8,10 +8,10 @@ import {
     PLAYER_RADIUS,
     POWER_UP_RADIUS,
     svgNamespace,
-} from "./lib/constants";
-import { checkLineIntersectsCircle, getDistance, randRange } from "./lib/helperFns";
-import { mazes } from "./lib/mazes";
-import { CellType, Direction, DirectionDiag, GameItem, type CellLines, type MazeBlueprint } from "./lib/types";
+} from "../lib/constants";
+import { checkLineIntersectsCircle, getDistance, randRange } from "../lib/helperFns";
+import { mazes } from "../lib/mazes";
+import { CellType, Direction, DirectionDiag, GameItem, type CellLines, type MazeBlueprint } from "../lib/types";
 
 const queryParams = Object.fromEntries(new URLSearchParams(location.search).entries());
 const mazeIdx = Number(queryParams.maze);

@@ -1,8 +1,8 @@
 // import "./style.css";
 // import typescriptLogo from "./typescript.svg";
 // import viteLogo from "/vite.svg";
-import { svgNamespace, MAZE_CELL_SIZE, COLORS, cellTypesArr } from "./lib/constants";
-import { CellType } from "./lib/types";
+import { svgNamespace, MAZE_CELL_SIZE, COLORS, cellTypesArr } from "../lib/constants";
+import { CellType } from "../lib/types";
 
 const rowsInput = document.querySelector<HTMLInputElement>("input#rows")!;
 const colsInput = document.querySelector<HTMLInputElement>("input#cols")!;

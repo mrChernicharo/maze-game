@@ -1,6 +1,6 @@
 import { createRandomMaze } from "./createRandomMaze.ts";
-import { randRange } from "./lib/helperFns.ts";
-import { Direction } from "./lib/types.ts";
+import { randRange } from "../lib/helperFns.ts";
+import { Direction } from "../lib/types.ts";
 
 const genBtn = document.querySelector("#mazes-rand-gen") as HTMLButtonElement;
 
