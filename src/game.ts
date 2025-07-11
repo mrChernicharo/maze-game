@@ -25,8 +25,6 @@ const cellItems: Partial<Record<CellType, GameItem>> = {
 const canvas = document.querySelector("#canvas") as SVGSVGElement;
 const loopBtn = document.querySelector("#loop-btn") as HTMLButtonElement;
 
-let coins = 0;
-
 const keyMap: { [k: string]: boolean } = {
     w: false,
     ArrowUp: false,
@@ -452,11 +450,19 @@ class Loop {
     frameId;
     isPlaying = false;
     timestamp = Date.now();
-    updatables: Updatable[] = [];
-    gotAllCoins = false;
 
     constructor() {
         this.frameId = -1;
+
+        loopBtn.addEventListener("click", () => {
+            if (this.isPlaying) {
+                loopBtn.textContent = "Play";
+                this.stop();
+            } else {
+                loopBtn.textContent = "Pause";
+                this.start();
+            }
+        });
     }
 
     start() {
@@ -470,62 +476,40 @@ class Loop {
         cancelAnimationFrame(this.frameId);
     }
 
-    getGameObjects() {
-        const gameObjects = {
-            doors: [],
-            enemies: [],
-            player: null,
-        } as GameObjects;
-
-        this.updatables.forEach((updatable) => {
-            if (updatable instanceof Door) {
-                gameObjects.doors.push(updatable as Door);
-            }
-            if (updatable instanceof Player) {
-                gameObjects.player = updatable as Player;
-            }
-            if (updatable instanceof Enemy) {
-                gameObjects.enemies.push(updatable as Enemy);
-            }
-        });
-
-        return gameObjects;
-    }
-
     tick() {
         const deltaTime = Date.now() - this.timestamp;
-        const gameObjects = this.getGameObjects();
-        const player = gameObjects.player;
 
-        for (const updatable of this.updatables) {
+        const { player, doors, enemies } = Game.gameObjects;
+
+        // run update method from every updatable object, like doors, player and enemy
+        for (const updatable of Game.getUpdatables()) {
             updatable.update(deltaTime);
         }
-        // console.log(this.updatables);
-        // console.log(gameObjects);
-        this.timestamp = Date.now();
-        this.frameId = requestAnimationFrame(this.tick.bind(this));
 
         if (!player) return;
 
-        if (player.currCell.type === CellType.ground && !this.gotAllCoins && gameObjects.doors.some((d) => d.isOpen)) {
-            for (const door of gameObjects.doors) door.toggleOpen();
+        if (player.currCell.type === CellType.ground && !Game.gotAllCoins && doors.some((d) => d.isOpen)) {
+            for (const door of doors) door.toggleOpen();
         }
 
-        if (coins === 0) {
-            if (!this.gotAllCoins) {
-                for (const door of gameObjects.doors) door.toggleOpen();
-                this.gotAllCoins = true;
+        // win condition
+        if (Game.coins === 0) {
+            // open doors
+            if (!Game.gotAllCoins) {
+                Game.gotAllCoins = true;
+                for (const door of doors) door.toggleOpen();
             }
 
-            if (this.gotAllCoins) {
+            // check distance between player and doors
+            if (Game.gotAllCoins) {
                 let minDoorDist = Infinity;
-                for (const door of gameObjects.doors)
+                for (const door of doors)
                     minDoorDist = Math.min(
                         minDoorDist,
                         getDistance(door.cellCenter.x, door.cellCenter.y, player.x, player.y)
                     );
 
-                // console.log({ minDoorDist, PLAYER_RADIUS });s
+                // if player is at a door, end level
                 if (minDoorDist < PLAYER_RADIUS) {
                     console.log("WIN!");
                     this.stop();
@@ -535,50 +519,64 @@ class Loop {
 
         if (player.currCell.item) {
             const item = player.handleCollectItem();
-            if (item === GameItem.coin) coins--;
-            if (coins === 0) console.log("coins ::", coins);
+            if (item === GameItem.coin) Game.coins--;
+            if (Game.coins === 0) console.log("coins ::", Game.coins);
         }
 
-        for (const enemy of gameObjects.enemies) {
+        for (const enemy of enemies) {
             const dist = getDistance(enemy.x, enemy.y, player.x, player.y);
             if (dist < PLAYER_RADIUS + ENEMY_RADIUS) {
                 console.log("DEATH!");
                 this.stop();
             }
         }
+
+        if (this.isPlaying) {
+            this.timestamp = Date.now();
+            this.frameId = requestAnimationFrame(this.tick.bind(this));
+        }
     }
 }
 
 class Game {
-    loop;
-    player;
+    static coins = 0;
+    static gotAllCoins = false;
+    static gameObjects: GameObjects = {
+        doors: [],
+        enemies: [],
+        player: null,
+    };
+    private static updatables: Updatable[] = [];
+    static loop: Loop;
 
-    constructor() {
-        this.loop = new Loop();
-
-        // initialize player
-        // initialize cells, append them to canvas
-        this.buildGrid();
-
-        this.player = new Player();
-
-        // append loop btn listeners
-        loopBtn.addEventListener("click", () => {
-            if (this.loop.isPlaying) {
-                loopBtn.textContent = "Play";
-                this.pause();
-            } else {
-                loopBtn.textContent = "Pause";
-                this.start();
-            }
-        });
-
-        // add player to loop.updatables
-        this.loop.updatables.push(this.player);
-        console.log(this);
+    static getUpdatables() {
+        return Game.updatables;
     }
 
-    buildGrid() {
+    static addUpdatable(updatable: Updatable) {
+        if (updatable instanceof Door) {
+            Game.gameObjects.doors.push(updatable as Door);
+        }
+        if (updatable instanceof Player) {
+            Game.gameObjects.player = updatable as Player;
+        }
+        if (updatable instanceof Enemy) {
+            Game.gameObjects.enemies.push(updatable as Enemy);
+        }
+        Game.updatables.push(updatable);
+    }
+
+    static start() {
+        Game.buildMaze();
+
+        const player = new Player();
+        Game.addUpdatable(player);
+
+        Game.loop = new Loop();
+        Game.loop.start();
+    }
+
+    private static buildMaze() {
         for (let row = 0; row < mazeBlueprint.length; row++) {
             mazeCells[row] = [];
             for (let col = 0; col < mazeBlueprint[row].length; col++) {
@@ -588,14 +586,14 @@ class Game {
                 let cell: Cell;
                 if (type === CellType.door) {
                     const door = new Door(row, col);
-                    this.loop.updatables.push(door);
+                    Game.addUpdatable(door);
                     cell = door;
                 } else {
                     cell = new Cell(row, col, type);
                 }
 
                 if (type === CellType.ground) {
-                    coins++;
+                    Game.coins++;
                 }
 
                 mazeCells[row].push(cell);
@@ -608,24 +606,17 @@ class Game {
             for (const cell of line) {
                 if (cell.type === CellType.enemy) {
                     const enemy = new Enemy(cell.row, cell.col);
-                    this.loop.updatables.push(enemy);
+                    Game.addUpdatable(enemy);
                 }
             }
         }
         console.log(mazeCells);
     }
-
-    start() {
-        this.loop.start();
-    }
-
-    pause() {
-        this.loop.stop();
-    }
 }
 
-const game = new Game();
-game.start();
+Game.start();
+// const game = new Game();
+// game.start();
 
 export type GameObjects = {
     doors: Door[];
