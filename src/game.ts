@@ -1,7 +1,17 @@
-import { CELL_SIZE, cellTypesArr, COLORS, PLAYER_RADIUS, svgNamespace } from "./lib/constants";
-import { checkLineIntersectsCircle } from "./lib/helperFns";
+import {
+    CELL_SIZE,
+    cellTypesArr,
+    COIN_RADIUS,
+    COLORS,
+    ENEMY_RADIUS,
+    oppositeDirections,
+    PLAYER_RADIUS,
+    POWER_UP_RADIUS,
+    svgNamespace,
+} from "./lib/constants";
+import { checkLineIntersectsCircle, getDistance, randRange } from "./lib/helperFns";
 import { mazes } from "./lib/mazes";
-import { CellType, Direction, GameItem, type CellLines, type MazeBlueprint } from "./lib/types";
+import { CellType, Direction, DirectionDiag, GameItem, type CellLines, type MazeBlueprint } from "./lib/types";
 
 const queryParams = Object.fromEntries(new URLSearchParams(location.search).entries());
 const mazeIdx = Number(queryParams.maze);
@@ -15,6 +25,8 @@ const cellItems: Partial<Record<CellType, GameItem>> = {
 const canvas = document.querySelector("#canvas") as SVGSVGElement;
 const loopBtn = document.querySelector("#loop-btn") as HTMLButtonElement;
 
+let coins = 0;
+
 const keyMap: { [k: string]: boolean } = {
     w: false,
     ArrowUp: false,
@@ -26,7 +38,7 @@ const keyMap: { [k: string]: boolean } = {
     ArrowRight: false,
 };
 
-const wallCollision: Record<Direction, boolean> = {
+const wallCollision: Record<DirectionDiag, boolean> = {
     top: false,
     right: false,
     bottom: false,
@@ -41,10 +53,95 @@ abstract class Updatable {
     update(deltaTime: number) {}
 }
 
+let enemyCounter = 0;
+class Enemy implements Updatable {
+    id: string;
+    svg: SVGCircleElement;
+    speed = 0.125;
+    x: number;
+    y: number;
+    target: { x: number; y: number };
+    direction: Direction | null = null;
+    constructor(row: number, col: number) {
+        this.x = col * CELL_SIZE + CELL_SIZE / 2;
+        this.y = row * CELL_SIZE + CELL_SIZE / 2;
+        this.target = { x: this.x, y: this.y };
+
+        this.id = `enemy-${enemyCounter}`;
+        enemyCounter++;
+
+        this.svg = document.createElementNS(svgNamespace, "circle");
+        this.svg.setAttribute("r", ENEMY_RADIUS + "px");
+        this.svg.setAttribute("fill", "red");
+        this.setPos(this.x, this.y);
+        canvas.append(this.svg);
+    }
+
+    setPos(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+        this.svg.setAttribute("cx", x + "px");
+        this.svg.setAttribute("cy", y + "px");
+    }
+
+    private determineCurrCell() {
+        const row = Math.trunc(this.y / CELL_SIZE);
+        const col = Math.trunc(this.x / CELL_SIZE);
+        return mazeCells?.[row]?.[col];
+    }
+
+    update(deltaTime: number): void {
+        const targetDistance = getDistance(this.x, this.y, this.target.x, this.target.y);
+        if (targetDistance <= 2) {
+            const currCell = this.determineCurrCell();
+            const neighbors = Cell.getNeighbors(currCell);
+
+            let neighborIdx = 0;
+            let reachableNeighbors = Object.entries(neighbors).filter(
+                ([dir, cell]) =>
+                    Object.values(Direction).includes(dir as Direction) &&
+                    cell &&
+                    ![CellType.door, CellType.wall].includes(cell.type)
+            );
+
+            if (!this.direction) {
+                neighborIdx = randRange(0, reachableNeighbors.length - 1);
+            }
+            if (this.direction) {
+                if (reachableNeighbors.length > 1) {
+                    const oppositeDirection = oppositeDirections[this.direction];
+                    reachableNeighbors = reachableNeighbors.filter(([dir, cell]) => dir !== oppositeDirection);
+                }
+                neighborIdx = randRange(0, reachableNeighbors.length - 1);
+            }
+
+            const [, selectedNeighborCell] = reachableNeighbors[neighborIdx];
+            this.target = selectedNeighborCell!.cellCenter;
+        }
+
+        let dx = 0;
+        let dy = 0;
+        if (this.target.x > this.x) dx += this.speed * deltaTime;
+        else if (this.target.x < this.x) dx -= this.speed * deltaTime;
+
+        if (this.target.y > this.y) dy += this.speed * deltaTime;
+        else if (this.target.y < this.y) dy -= this.speed * deltaTime;
+        // console.table({ dx, dy });
+
+        if (dx > 0 && dy == 0) this.direction = Direction.right;
+        else if (dx < 0 && dy == 0) this.direction = Direction.left;
+        else if (dx == 0 && dy < 0) this.direction = Direction.top;
+        else if (dx == 0 && dy > 0) this.direction = Direction.bottom;
+
+        this.setPos(this.x + dx, this.y + dy);
+    }
+}
+
 class Player implements Updatable {
     id = "player";
     svg: SVGCircleElement;
-    speed = 0.15;
+    speed = 0.25;
+    // speed = 0.15;
     x: number;
     y: number;
     currCell: Cell;
@@ -52,16 +149,16 @@ class Player implements Updatable {
     constructor() {
         let row = 0;
         let col = 0;
-        let found = false;
+        let doorFound = false;
 
         for (const line of mazeCells) {
-            if (found) break;
+            if (doorFound) break;
             for (const cell of line) {
-                if (found) break;
+                if (doorFound) break;
                 if (cell.type === CellType.door) {
                     row = cell.row;
                     col = cell.col;
-                    found = true;
+                    doorFound = true;
                 }
             }
         }
@@ -100,14 +197,25 @@ class Player implements Updatable {
         const col = Math.trunc(this.x / CELL_SIZE);
         // console.log("determineCurrCell", this.currCell);
         if (row !== this.currCell.row || col !== this.currCell.col) {
-            // cell changed
             const cell = mazeCells?.[row]?.[col];
             if (cell) {
                 this.currCell = cell;
-                const item = this.currCell.pluckItem();
-                console.log("cell changed ::", item, this.currCell);
+                // console.log("cell changed ::", this.currCell);
             }
         }
+    }
+
+    handleCollectItem() {
+        const cellCenter = this.currCell.cellCenter;
+        const distanceToCellCenter = getDistance(this.x, this.y, cellCenter.x, cellCenter.y);
+        const cellItem = this.currCell.item;
+        const itemRadius = cellItem === GameItem.coin ? COIN_RADIUS : POWER_UP_RADIUS;
+        if (distanceToCellCenter <= PLAYER_RADIUS + itemRadius) {
+            const item = this.currCell.pluckItem();
+            console.log("plucked item", item);
+            return item;
+        }
+        return null;
     }
 
     update(deltaTime: number): void {
@@ -119,6 +227,7 @@ class Player implements Updatable {
 
         this.updateWallCollisions(neighbors);
 
+        // console.log({ distanceToCellCenter });
         // console.log("currCell", this.currCell);
         // console.log("neighbors", neighbors);
         // console.log("wallCollisions", wallCollision);
@@ -186,7 +295,7 @@ class Player implements Updatable {
         return { dx, dy };
     }
 
-    private updateWallCollisions(neighbors: Record<Direction, Cell | null>) {
+    private updateWallCollisions(neighbors: Record<DirectionDiag, Cell | null>) {
         const playerCircle = { cx: this.x, cy: this.y, r: PLAYER_RADIUS };
 
         wallCollision.top =
@@ -232,14 +341,19 @@ class Cell {
     type: CellType;
     rect: SVGRectElement;
     itemElem: SVGCircleElement | null = null;
+    cellCenter = { x: 0, y: 0 };
     item: GameItem | null = null;
 
-    constructor(row: number, col: number, typeNum: number) {
+    constructor(row: number, col: number, type: CellType) {
         this.row = row;
         this.col = col;
         this.x = col * CELL_SIZE;
         this.y = row * CELL_SIZE;
-        this.type = cellTypesArr[typeNum];
+        this.cellCenter = {
+            x: this.x + CELL_SIZE / 2,
+            y: this.y + CELL_SIZE / 2,
+        };
+        this.type = type;
 
         this.rect = document.createElementNS(svgNamespace, "rect");
         this.rect.dataset["col"] = String(this.col);
@@ -260,7 +374,7 @@ class Cell {
             this.itemElem = document.createElementNS(svgNamespace, "circle");
             this.itemElem.setAttribute("cx", CELL_SIZE / 2 + this.col * CELL_SIZE + "px");
             this.itemElem.setAttribute("cy", CELL_SIZE / 2 + this.row * CELL_SIZE + "px");
-            this.itemElem.setAttribute("r", this.item === GameItem.coin ? "6px" : "14px");
+            this.itemElem.setAttribute("r", this.item === GameItem.coin ? COIN_RADIUS + "px" : POWER_UP_RADIUS + "px");
             this.itemElem.setAttribute("fill", this.item === GameItem.coin ? "gold" : "dodgerblue");
         }
 
@@ -276,7 +390,7 @@ class Cell {
         });
     }
 
-    static getNeighbors(cell: Cell): Record<Direction, Cell | null> {
+    static getNeighbors(cell: Cell): Record<DirectionDiag, Cell | null> {
         return {
             top: mazeCells?.[cell.row - 1]?.[cell.col] ?? null,
             right: mazeCells?.[cell.row]?.[cell.col + 1] ?? null,
@@ -291,13 +405,46 @@ class Cell {
 
     pluckItem() {
         const item = this.item;
-        if (item) {
-            this.itemElem?.remove();
-            this.item = null;
-            this.itemElem = null;
-            return item;
-        }
-        return null;
+
+        if (!item) return null;
+
+        this.itemElem?.remove();
+        this.item = null;
+        this.itemElem = null;
+        return item;
+    }
+}
+
+let doorCounter = 0;
+class Door extends Cell implements Updatable {
+    id: string;
+    isOpen: boolean;
+    constructor(row: number, col: number) {
+        super(row, col, CellType.door);
+        this.id = `door-${doorCounter}`;
+        doorCounter++;
+
+        this.isOpen = true;
+    }
+
+    toggleOpen() {
+        console.log("toggle open!");
+        this.isOpen = !this.isOpen;
+
+        mazeCells[this.row][this.col].type = this.isOpen ? CellType.door : CellType.wall;
+        mazeCells[this.row][this.col].rect.setAttribute(
+            "stroke",
+            [CellType.wall].includes(this.type) ? "black" : "none"
+        );
+        mazeCells[this.row][this.col].rect.setAttribute(
+            "fill",
+            [CellType.wall, CellType.door].includes(this.type) ? COLORS[this.type] : COLORS.ground
+        );
+    }
+
+    update(deltaTime: number): void {
+        // console.log("door!");
+        // console.log("door!", this.playerRef.x,  this.playerRef.y);
     }
 }
 
@@ -306,6 +453,7 @@ class Loop {
     isPlaying = false;
     timestamp = Date.now();
     updatables: Updatable[] = [];
+    gotAllCoins = false;
 
     constructor() {
         this.frameId = -1;
@@ -322,16 +470,82 @@ class Loop {
         cancelAnimationFrame(this.frameId);
     }
 
+    getGameObjects() {
+        const gameObjects = {
+            doors: [],
+            enemies: [],
+            player: null,
+        } as GameObjects;
+
+        this.updatables.forEach((updatable) => {
+            if (updatable instanceof Door) {
+                gameObjects.doors.push(updatable as Door);
+            }
+            if (updatable instanceof Player) {
+                gameObjects.player = updatable as Player;
+            }
+            if (updatable instanceof Enemy) {
+                gameObjects.enemies.push(updatable as Enemy);
+            }
+        });
+
+        return gameObjects;
+    }
+
     tick() {
         const deltaTime = Date.now() - this.timestamp;
-        // console.log("tick", this.frameId, deltaTime);
+        const gameObjects = this.getGameObjects();
+        const player = gameObjects.player;
 
         for (const updatable of this.updatables) {
             updatable.update(deltaTime);
         }
-
+        // console.log(this.updatables);
+        // console.log(gameObjects);
         this.timestamp = Date.now();
         this.frameId = requestAnimationFrame(this.tick.bind(this));
+
+        if (!player) return;
+
+        if (player.currCell.type === CellType.ground && !this.gotAllCoins && gameObjects.doors.some((d) => d.isOpen)) {
+            for (const door of gameObjects.doors) door.toggleOpen();
+        }
+
+        if (coins === 0) {
+            if (!this.gotAllCoins) {
+                for (const door of gameObjects.doors) door.toggleOpen();
+                this.gotAllCoins = true;
+            }
+
+            if (this.gotAllCoins) {
+                let minDoorDist = Infinity;
+                for (const door of gameObjects.doors)
+                    minDoorDist = Math.min(
+                        minDoorDist,
+                        getDistance(door.cellCenter.x, door.cellCenter.y, player.x, player.y)
+                    );
+
+                // console.log({ minDoorDist, PLAYER_RADIUS });s
+                if (minDoorDist < PLAYER_RADIUS) {
+                    console.log("WIN!");
+                    this.stop();
+                }
+            }
+        }
+
+        if (player.currCell.item) {
+            const item = player.handleCollectItem();
+            if (item === GameItem.coin) coins--;
+            if (coins === 0) console.log("coins ::", coins);
+        }
+
+        for (const enemy of gameObjects.enemies) {
+            const dist = getDistance(enemy.x, enemy.y, player.x, player.y);
+            if (dist < PLAYER_RADIUS + ENEMY_RADIUS) {
+                console.log("DEATH!");
+                this.stop();
+            }
+        }
     }
 }
 
@@ -342,10 +556,9 @@ class Game {
     constructor() {
         this.loop = new Loop();
 
+        // initialize player
         // initialize cells, append them to canvas
         this.buildGrid();
-
-        // initialize player
 
         this.player = new Player();
 
@@ -369,10 +582,34 @@ class Game {
         for (let row = 0; row < mazeBlueprint.length; row++) {
             mazeCells[row] = [];
             for (let col = 0; col < mazeBlueprint[row].length; col++) {
-                const cell = new Cell(row, col, mazeBlueprint[row][col]);
+                const typeNum = mazeBlueprint[row][col];
+                const type = cellTypesArr[typeNum];
+
+                let cell: Cell;
+                if (type === CellType.door) {
+                    const door = new Door(row, col);
+                    this.loop.updatables.push(door);
+                    cell = door;
+                } else {
+                    cell = new Cell(row, col, type);
+                }
+
+                if (type === CellType.ground) {
+                    coins++;
+                }
+
                 mazeCells[row].push(cell);
                 canvas.append(cell.rect);
                 if (cell.itemElem) canvas.append(cell.itemElem);
+            }
+        }
+
+        for (const line of mazeCells) {
+            for (const cell of line) {
+                if (cell.type === CellType.enemy) {
+                    const enemy = new Enemy(cell.row, cell.col);
+                    this.loop.updatables.push(enemy);
+                }
             }
         }
         console.log(mazeCells);
@@ -389,3 +626,9 @@ class Game {
 
 const game = new Game();
 game.start();
+
+export type GameObjects = {
+    doors: Door[];
+    enemies: Enemy[];
+    player: Player | null;
+};

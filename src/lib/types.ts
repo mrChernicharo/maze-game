@@ -11,6 +11,13 @@ export enum Direction {
     right = "right",
     bottom = "bottom",
     left = "left",
+}
+
+export enum DirectionDiag {
+    top = "top",
+    right = "right",
+    bottom = "bottom",
+    left = "left",
     tr = "tr",
     tl = "tl",
     br = "br",
