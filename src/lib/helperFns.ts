@@ -34,3 +34,17 @@ export function randRange(min: number, max: number) {
 export async function sleep(time: number) {
     return new Promise((resolve) => setTimeout(resolve, time));
 }
+
+const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-";
+
+export function idMaker(length = 12) {
+    return Array(length)
+        .fill(0)
+        .map((item) => ID_CHARS.split("")[Math.round(Math.random() * ID_CHARS.length)])
+        .join("");
+}
+
+export function parseURLQueryParams<T>() {
+    const queryParams = Object.fromEntries(new URLSearchParams(location.search).entries());
+    return queryParams as T;
+}

@@ -39,3 +39,20 @@ export type CellLines = {
     bottom: LineCoords;
     left: LineCoords;
 };
+
+/*********/
+
+export interface World {
+    id: string;
+    index: number;
+    name: string;
+    size: [number, number];
+}
+
+export type MazeCell = { row: number; col: number; value: number };
+
+export interface Maze {
+    id: string;
+    index: number;
+    cells: MazeCell[][];
+}

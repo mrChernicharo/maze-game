@@ -1,5 +1,5 @@
-import { randRange } from "../lib/helperFns";
-import { Direction } from "../lib/types";
+import { idMaker, randRange } from "../lib/helperFns";
+import { Direction, type Maze } from "../lib/types";
 
 export function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
     const maze: Cell[][] = [];
@@ -67,7 +67,6 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
 
     // ************** algorithm for creating paths
     const stack = [initialCell];
-
     while (stack.length > 0) {
         const cell = stack.at(-1);
         if (!cell) break;
@@ -160,4 +159,49 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
     // console.log(maze.map((line) => line.map((cell) => cell.value)));
     // console.log(maze);
     return maze;
+}
+
+function getRandomDoors() {
+    const doors: Direction[] = [];
+    while (doors.length == 0) {
+        Object.values(Direction).forEach((dir) => {
+            const coinFlip = randRange(0, 1);
+            if (coinFlip == 1) doors.push(dir);
+        });
+    }
+    return doors;
+}
+
+export function generateMazes(mazeCount = 10) {
+    const mazes: Record<string, Maze> = {};
+    const rowsMinMax = [2, 20];
+    const colsMinMax = [2, 20];
+
+    let counter = 0;
+    while (counter < mazeCount) {
+        const rows = randRange(rowsMinMax[0], rowsMinMax[1]);
+        const cols = randRange(colsMinMax[0], colsMinMax[1]);
+
+        const doors = getRandomDoors();
+
+        const id = idMaker();
+        mazes[id] = {
+            id,
+            index: counter,
+            cells: createRandomMaze(rows, cols, doors),
+        };
+        counter++;
+
+        // console.log({
+        //     counter,
+        //     generatedMaze,
+        //     doors,
+        //     maze: JSON.stringify(
+        //         generatedMaze.map((line) => line.map((cell) => cell.value)),
+        //         null
+        //     ),
+        // });
+    }
+
+    return mazes;
 }

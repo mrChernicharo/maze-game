@@ -12,7 +12,7 @@ export const COLORS = {
 
 export const MAZE_CELL_SIZE = 20;
 export const MAP_CELL_SIZE = 100;
-export const MINI_MAZE_CELL_SIZE = 5;
+export const MINI_MAZE_CELL_SIZE = 4;
 export const CELL_SIZE = 50;
 export const PLAYER_RADIUS = 14;
 export const ENEMY_RADIUS = 12;
