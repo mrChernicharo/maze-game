@@ -4,16 +4,18 @@ import { Direction } from "../lib/types";
 
 const canvas = document.querySelector<SVGSVGElement>("#canvas")!;
 
+type Walls = { top: boolean; right: boolean; bottom: boolean; left: boolean };
+
 export class MapTile {
     row;
     col;
     svg = document.createElementNS(svgNamespace, "g");
     visited = false;
-    focused = false;
-    walls = { top: true, right: true, bottom: true, left: true };
-    constructor(row: number, col: number) {
+    walls: Walls;
+    constructor(row: number, col: number, walls = { top: true, right: true, bottom: true, left: true }) {
         this.row = row;
         this.col = col;
+        this.walls = walls;
 
         this.svg.dataset["row"] = String(this.row);
         this.svg.dataset["col"] = String(this.col);
@@ -88,15 +90,11 @@ export class MapTile {
             this.svg.append(leftLine);
         }
 
-        if (this.visited) {
-            // this.svg.classList.add("bg-blue-600");
-            // this.svg.classList.remove("bg-slate-400");
-            this.svg.setAttribute("fill", "gray");
-        } else {
-            // this.svg.classList.remove("bg-blue-600");
-            // this.svg.classList.add("bg-slate-400");
-            this.svg.setAttribute("fill", "black");
-        }
+        // if (this.visited) {
+        //     this.svg.setAttribute("fill", "gray");
+        // } else {
+        //     this.svg.setAttribute("fill", "black");
+        // }
 
         this.svg.dataset["walls"] = Object.entries(this.walls)
             .map(([dir, hasWall]) => (hasWall ? dir[0] : ""))
@@ -116,14 +114,13 @@ export class MapGenerator {
         }
         this.width = width;
         this.height = height;
-        this.grid = this.initializeGrid();
     }
 
     /**
      * Initializes the grid with all cells having all walls intact and marked as unvisited.
      */
     initializeGrid() {
-        const grid: MapTile[][] = ([] = []);
+        const grid: MapTile[][] = [];
         for (let r = 0; r < this.height; r++) {
             grid[r] = [];
             for (let c = 0; c < this.width; c++) {
@@ -138,12 +135,13 @@ export class MapGenerator {
      * @returns The generated grid representing the maze.
      */
     async generate() {
+        this.grid = this.initializeGrid();
+
         // Start at a random cell
         const startRow = Math.floor(Math.random() * this.height);
         const startCol = Math.floor(Math.random() * this.width);
         let currentCell = this.grid[startRow][startCol];
         currentCell.visited = true;
-        currentCell.focused = true;
         this.stack.push(currentCell);
 
         while (this.stack.length > 0) {
@@ -153,7 +151,6 @@ export class MapGenerator {
                     item.redraw();
                 });
             });
-            currentCell.focused = false;
             const unvisitedNeighbors = this.getUnvisitedNeighbors(currentCell);
 
             if (unvisitedNeighbors.length > 0) {
@@ -172,6 +169,32 @@ export class MapGenerator {
             }
         }
         return this.grid;
+    }
+
+    static buildFromSerializedWallData(wallData: string[][]) {
+        //       [
+        //         ["rb", "rl", "rl", "bl"],
+        //         ["tr", "l", "rb", "tbl"],
+        //         ["rb", "bl", "tb", "tb"],
+        //         ["t", "tr", "tl", "tb"],
+        //         ["r", "rl", "rl", "tl"]
+        //       ],
+        const grid: MapTile[][] = [];
+        for (let row = 0; row < wallData.length; row++) {
+            grid[row] = [];
+            for (let col = 0; col < wallData[0].length; col++) {
+                const walls = { top: false, right: false, bottom: false, left: false };
+                wallData[row][col].split("").forEach((dir) => {
+                    if (dir == "t") walls.top = true;
+                    if (dir == "r") walls.right = true;
+                    if (dir == "b") walls.bottom = true;
+                    if (dir == "l") walls.left = true;
+                });
+
+                grid[row][col] = new MapTile(row, col, walls);
+            }
+        }
+        return grid;
     }
 
     /**
@@ -264,5 +287,35 @@ export class MapGenerator {
             lastRowString += grid[height - 1][c].walls.bottom ? "__" : "  ";
         }
         console.log(lastRowString);
+    }
+
+    static getGridExits(grid: MapTile[][]) {
+        const serializedExits: string[][] = [];
+        for (let row = 0; row < grid.length; row++) {
+            serializedExits[row] = [];
+            for (let col = 0; col < grid[0].length; col++) {
+                const tile = grid[row][col];
+                serializedExits[row][col] = Object.entries(tile.walls)
+                    .map(([dir, hasWall]) => (!hasWall ? dir[0] : ""))
+                    .join("");
+            }
+        }
+
+        return serializedExits;
+    }
+
+    static getSerializedGridWalls(grid: MapTile[][]) {
+        const serializedWalls: string[][] = [];
+        for (let row = 0; row < grid.length; row++) {
+            serializedWalls[row] = [];
+            for (let col = 0; col < grid[0].length; col++) {
+                const tile = grid[row][col];
+                serializedWalls[row][col] = Object.entries(tile.walls)
+                    .map(([dir, hasWall]) => (hasWall ? dir[0] : ""))
+                    .join("");
+            }
+        }
+
+        return serializedWalls;
     }
 }
