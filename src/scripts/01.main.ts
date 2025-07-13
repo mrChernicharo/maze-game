@@ -5,7 +5,7 @@ const initialWorld: World = {
     id: idMaker(),
     index: 0,
     name: "The Adventure Begins",
-    size: [2, 3],
+    size: [3, 4],
 };
 
 class MainScreen {
@@ -22,7 +22,7 @@ class MainScreen {
     }
 
     goToWorldMapScreen(worldId: string) {
-        location.assign(`/src/pages/world.html?worldId=${worldId}`);
+        location.assign(`/src/pages/02.world.html?worldId=${worldId}`);
     }
 
     private hydrate() {

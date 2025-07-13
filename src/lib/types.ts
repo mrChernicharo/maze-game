@@ -54,5 +54,6 @@ export type MazeCell = { row: number; col: number; value: number };
 export interface Maze {
     id: string;
     index: number;
-    cells: MazeCell[][];
+    cells: number[][];
+    // cells: MazeCell[][];
 }

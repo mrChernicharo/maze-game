@@ -158,7 +158,8 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
     // console.log(JSON.stringify(maze.map((line) => line.map((cell) => cell.value))));
     // console.log(maze.map((line) => line.map((cell) => cell.value)));
     // console.log(maze);
-    return maze;
+    // return maze;
+    return maze.map((line) => line.map((cell) => cell.value));
 }
 
 function getRandomDoors() {

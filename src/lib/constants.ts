@@ -10,6 +10,8 @@ export const COLORS = {
     powerUp: "#0056ff",
 };
 
+export const COLOR_ARR = [COLORS.wall, COLORS.ground, COLORS.enemy, COLORS.powerUp, COLORS.door];
+
 export const MAZE_CELL_SIZE = 20;
 export const MAP_CELL_SIZE = 100;
 export const MINI_MAZE_CELL_SIZE = 4;
