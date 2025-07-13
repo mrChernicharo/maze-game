@@ -13,7 +13,7 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
             this.col = col;
         }
 
-        static get4Neighbors(cell: Cell) {
+        static getNeighbors(cell: Cell) {
             return {
                 top: maze?.[cell.row - 1]?.[cell.col] || null,
                 right: maze?.[cell.row]?.[cell.col + 1] || null,
@@ -22,13 +22,8 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
             };
         }
 
-        static get8Neighbors(cell: Cell) {
+        static getDiagonalNeighbors(cell: Cell) {
             return {
-                top: maze?.[cell.row - 1]?.[cell.col] || null,
-                right: maze?.[cell.row]?.[cell.col + 1] || null,
-                bottom: maze?.[cell.row + 1]?.[cell.col] || null,
-                left: maze?.[cell.row]?.[cell.col - 1] || null,
-
                 tl: maze?.[cell.row - 1]?.[cell.col - 1] || null,
                 tr: maze?.[cell.row - 1]?.[cell.col + 1] || null,
                 bl: maze?.[cell.row + 1]?.[cell.col - 1] || null,
@@ -40,7 +35,8 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
             // must be a wall cell
             if (!cell || cell.value !== 0) return false;
 
-            const { tl, top, tr, right, br, bottom, bl, left } = Cell.get8Neighbors(cell);
+            const { top, right, bottom, left } = Cell.getNeighbors(cell);
+            const { tl, tr, br, bl } = Cell.getDiagonalNeighbors(cell);
 
             // no adjacent cell trio is exclusively made of path cells
             if (left && tl && top && [left, tl, top].every((c) => c.value === 1)) return false;
@@ -71,7 +67,7 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
         const cell = stack.at(-1);
         if (!cell) break;
 
-        const neighbors = Cell.get4Neighbors(cell);
+        const neighbors = Cell.getNeighbors(cell);
         const neighborCandidates = Object.values(neighbors).filter(Cell.canBuildPath);
 
         if (neighborCandidates.length === 0) {
@@ -140,7 +136,7 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
         }
 
         const filteredCandidates = candidates.filter((c) =>
-            Object.values(Cell.get4Neighbors(c)).some((n) => n && n.value === 1)
+            Object.values(Cell.getNeighbors(c)).some((n) => n && n.value === 1)
         );
         if (filteredCandidates.length == 0) {
             console.warn("could not find a place to stick this door", door);
@@ -154,6 +150,54 @@ export function createRandomMaze(rows: number, cols: number, doors: Direction[])
         actualCell.value = 4;
     }
     // ************** doors logic END
+
+    // ************** create and distribute enemies
+    // 1. determine enemy count based on the amount of cells in the maze (large maze == more enemies)
+    let groundCellCount = 0;
+    maze.forEach((line) =>
+        line.forEach((cell) => {
+            if (cell.value === 1) groundCellCount++;
+        })
+    );
+    let enemyCount = 1;
+    if (groundCellCount >= 72) enemyCount = 5;
+    else if (groundCellCount >= 60) enemyCount = 4;
+    else if (groundCellCount >= 48) enemyCount = 3;
+    else if (groundCellCount >= 32) enemyCount = 2;
+
+    // 2. find center cell, then spiral outwards adding enemies as ground cells are found
+    // keep spawning enemies until all enemies are laid out.
+    const dirs = [Direction.top, Direction.left, Direction.bottom, Direction.right];
+    let steps = 0;
+    let dirIdx = 0;
+    let enemyRow = Math.ceil(rows / 2);
+    let enemyCol = Math.ceil(cols / 2);
+    while (enemyCount > 0) {
+        const isEven = dirIdx % 2 == 0;
+        if (isEven) steps++;
+
+        let repeatCount = 0;
+        while (repeatCount < steps) {
+            const dir = dirs[dirIdx % 4];
+            if (dir == Direction.top) enemyRow--;
+            if (dir == Direction.bottom) enemyRow++;
+            if (dir == Direction.left) enemyCol--;
+            if (dir == Direction.right) enemyCol++;
+
+            const cell = maze[enemyRow][enemyCol];
+            if (cell.value === 1) {
+                // found ground spot to place enemy
+                enemyCount--;
+                cell.value = 2;
+            }
+
+            console.log({ dir, cell });
+            repeatCount++;
+        }
+        dirIdx++;
+    }
+
+    // ************** create and distribute enemies END
 
     // console.log(JSON.stringify(maze.map((line) => line.map((cell) => cell.value))));
     // console.log(maze.map((line) => line.map((cell) => cell.value)));

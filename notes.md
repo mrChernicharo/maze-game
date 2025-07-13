@@ -1,9 +1,9 @@
-enemy movement
+mazeStatus
 
-is my distance to target < 2 ?
-no: keep moving towards target
-yes: choose another target
+player initial position
 
-1. enhance enemy movement
-2. player/enemy collision
-3. implement door behavior
+createRandomMaze :: place enemies and powerUps
+
+corridors
+
+sprites

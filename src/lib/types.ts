@@ -29,6 +29,12 @@ export enum GameItem {
     powerUp = "powerUp",
 }
 
+export enum MazeStatus {
+    undiscorvered = "undiscorvered",
+    discorvered = "discovered",
+    completed = "completed",
+}
+
 export type MazeBlueprint = number[][];
 
 export type LineCoords = { ax: number; ay: number; bx: number; by: number };

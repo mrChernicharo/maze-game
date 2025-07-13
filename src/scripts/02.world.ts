@@ -9,6 +9,9 @@ console.log("worldId :::", worldId);
 
 const canvas = document.querySelector<SVGSVGElement>("#canvas")!;
 
+const rowsMinMax = [3, 14];
+const colsMinMax = [3, 14];
+
 class WorldMap {
     world!: World;
     mazes: Record<string, Maze> = {};
@@ -33,9 +36,6 @@ class WorldMap {
         const storedMapsData = JSON.parse(localStorage.getItem("maps")!) as any;
         if (!storedMapsData) {
             this.grid = await new MapGenerator(worldRows, worldCols).generate();
-
-            const rowsMinMax = [2, 14];
-            const colsMinMax = [2, 14];
 
             let index = 0;
             this.grid.forEach((line) => {
@@ -63,9 +63,7 @@ class WorldMap {
                 },
             };
             localStorage.setItem("maps", JSON.stringify(initialMapsData));
-        }
-        // localstorage has data
-        else {
+        } else {
             const mapData = storedMapsData[worldId];
             const gridWalls = mapData.gridWalls;
             this.grid = MapGenerator.buildFromSerializedWallData(gridWalls);
@@ -79,18 +77,15 @@ class WorldMap {
             gridLine.forEach((tile) => {
                 const maze = mazesAsArray[tileIdx];
 
-                const miniMazeRect = document.createElementNS(svgNamespace, "rect");
-
                 const width = maze.cells[0].length * MINI_MAZE_CELL_SIZE;
                 const height = maze.cells.length * MINI_MAZE_CELL_SIZE;
-
-                // console.log({ tileIdx, tile, maze, width, height });
 
                 const topX = tile.col * MAP_CELL_SIZE;
                 const topY = tile.row * MAP_CELL_SIZE;
                 const alignedX = topX + (MAP_CELL_SIZE - width) / 2;
                 const alignedY = topY + (MAP_CELL_SIZE - height) / 2;
 
+                const miniMazeRect = document.createElementNS(svgNamespace, "rect");
                 miniMazeRect.setAttribute("x", alignedX + "px");
                 miniMazeRect.setAttribute("y", alignedY + "px");
                 miniMazeRect.setAttribute("width", width + "px");
