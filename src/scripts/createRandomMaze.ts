@@ -1,5 +1,5 @@
 import { idMaker, randRange } from "../lib/helperFns";
-import { Direction, type Maze } from "../lib/types";
+import { Direction, MazeStatus, type Maze } from "../lib/types";
 
 export function createRandomMaze(rows: number, cols: number, doors: Direction[]) {
     const maze: Cell[][] = [];
@@ -234,6 +234,7 @@ export function generateMazes(mazeCount = 10) {
             id,
             index: counter,
             cells: createRandomMaze(rows, cols, doors),
+            status: MazeStatus.discovered,
         };
         counter++;
 

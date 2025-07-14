@@ -9,16 +9,34 @@ import {
     POWER_UP_RADIUS,
     svgNamespace,
 } from "../lib/constants";
-import { checkLineIntersectsCircle, getDistance, parseURLQueryParams, randRange } from "../lib/helperFns";
-import { CellType, Direction, DirectionDiag, GameItem, type CellLines, type MazeBlueprint } from "../lib/types";
+import { checkLineIntersectsCircle, getDistance, parseURLQueryParams, randRange, sleep } from "../lib/helperFns";
+import { mazes } from "../lib/mazes";
+import {
+    CellType,
+    CorridorStatus,
+    Direction,
+    DirectionDiag,
+    GameItem,
+    MazeStatus,
+    type CellLines,
+    type Corridor,
+    type Maze,
+    type MazeBlueprint,
+} from "../lib/types";
 
 const { worldId, mazeId } = parseURLQueryParams<{ worldId: string; mazeId: string }>();
+const worldData = JSON.parse(localStorage.getItem("worlds")!);
 const mapsData = JSON.parse(localStorage.getItem("maps")!);
-const maze = mapsData[worldId].mazes[mazeId];
+const world = worldData[worldId];
+const mapData = mapsData[worldId];
+const worldMazes = mapData.mazes as Record<string, Maze>;
+const worldCorridors = mapData.corridors as Corridor[];
+const maze = worldMazes[mazeId];
 const mazeBlueprint = maze.cells;
 
 console.log("worldId :::", worldId);
 console.log("mazeId :::", mazeId);
+console.log("world :::", world);
 console.log("mapsData :::", mapsData);
 console.log("mazeBlueprint :::", mazeBlueprint);
 
@@ -225,6 +243,12 @@ class Player implements Updatable {
         return null;
     }
 
+    static async die() {
+        console.log("DEATH!", { mapsData, mazes, maze });
+        await sleep(1000);
+        location.reload();
+    }
+
     update(deltaTime: number): void {
         const { dx, dy } = this.handlePlayerMovement(deltaTime);
 
@@ -426,10 +450,16 @@ let doorCounter = 0;
 class Door extends Cell implements Updatable {
     id: string;
     isOpen: boolean;
+    direction!: Direction;
     constructor(row: number, col: number) {
         super(row, col, CellType.door);
         this.id = `door-${doorCounter}`;
         doorCounter++;
+
+        if (row == 0) this.direction = Direction.top;
+        if (col == 0) this.direction = Direction.left;
+        if (row == mazeBlueprint.length - 1) this.direction = Direction.bottom;
+        if (col == mazeBlueprint[0].length - 1) this.direction = Direction.right;
 
         this.isOpen = true;
     }
@@ -520,8 +550,8 @@ class Loop {
 
                 // if player is at a door, end level
                 if (minDoorDist < PLAYER_RADIUS) {
-                    console.log("WIN!");
                     this.stop();
+                    Game.win();
                 }
             }
         }
@@ -535,7 +565,7 @@ class Loop {
         for (const enemy of enemies) {
             const dist = getDistance(enemy.x, enemy.y, player.x, player.y);
             if (dist < PLAYER_RADIUS + ENEMY_RADIUS) {
-                console.log("DEATH!");
+                Player.die();
                 this.stop();
             }
         }
@@ -557,6 +587,42 @@ class Game {
     };
     private static updatables: Updatable[] = [];
     static loop: Loop;
+
+    // static getConnectedMazes() {
+    //     const mazesAsArray = Object.values(worldMazes).sort((a, b) => a.index - b.index);
+
+    //     //     // console.log({ mazesAsArray });
+    //     //     // // const leftMaze = mazesAsArray[maze.index]
+    //     //     // worldMazes;
+
+    //     const { doors } = Game.gameObjects;
+    //     doors.forEach((door) => {
+    //         if (door.direction === Direction.top) {
+    //             // mazesAsArray[maze.index];
+    //         } else if (door.direction === Direction.right) {
+    //             // mazesAsArray[maze.index];
+    //         }
+    //     });
+
+    //     //     // doors[0]
+
+    //     //     const connections = {};
+
+    //     //     return {
+    //     //         // top: maze?.[cell.row - 1]?.[cell.col] || null,
+    //     //         // right: maze?.[cell.row]?.[cell.col + 1] || null,
+    //     //         // bottom: maze?.[cell.row + 1]?.[cell.col] || null,
+    //     //         // left: maze?.[cell.row]?.[cell.col - 1] || null,
+    //     //     };
+    // }
+
+    // static createCorridors() {
+    //     const { doors } = Game.gameObjects;
+    //     console.log({ doors, maze, worldMazes });
+    //     doors.forEach((door) => {
+    //         door.direction;
+    //     });
+    // }
 
     static getUpdatables() {
         return Game.updatables;
@@ -619,7 +685,45 @@ class Game {
                 }
             }
         }
-        console.log(mazeCells);
+        console.log("mazeCells", mazeCells);
+        // console.log("connectedMazes", this.getConnectedMazes());
+        // console.log("createCorridors", this.createCorridors());
+    }
+
+    static win() {
+        const affectedMazeIndices: Set<number> = new Set();
+        const newCorridors: Corridor[] = [];
+        worldCorridors.slice().forEach((corr) => {
+            if (corr.tileIndices.includes(maze.index)) {
+                affectedMazeIndices.add(corr.tileIndices[0]);
+                affectedMazeIndices.add(corr.tileIndices[1]);
+                newCorridors.push({ ...corr, status: CorridorStatus.discovered });
+            } else {
+                newCorridors.push(corr);
+            }
+        });
+
+        const newMazes: Record<string, Maze> = {};
+        const mazesAsArray = Object.values(worldMazes).sort((a, b) => a.index - b.index);
+        mazesAsArray.forEach((m) => {
+            if (affectedMazeIndices.has(m.index)) {
+                if (m.id === maze.id) {
+                    newMazes[m.id] = { ...m, status: MazeStatus.completed };
+                } else {
+                    newMazes[m.id] = { ...m, status: MazeStatus.discovered };
+                }
+            } else {
+                newMazes[m.id] = m;
+            }
+        });
+
+        console.log("WIN!", { mapsData, mazes, maze, worldCorridors, newCorridors });
+        // save updated corridors (review neighbor corridors)
+        localStorage.setItem(
+            "maps",
+            JSON.stringify({ ...mapsData, [worldId]: { ...mapData, corridors: newCorridors, mazes: newMazes } })
+        );
+        location.assign(`/src/pages/02.world.html?worldId=${worldId}`);
     }
 }
 

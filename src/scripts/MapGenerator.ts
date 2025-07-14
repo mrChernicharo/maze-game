@@ -1,21 +1,21 @@
 import { svgNamespace, MAP_CELL_SIZE } from "../lib/constants";
 import { sleep } from "../lib/helperFns";
-import { Direction } from "../lib/types";
+import { Direction, type Walls } from "../lib/types";
 
 const canvas = document.querySelector<SVGSVGElement>("#canvas")!;
 
-type Walls = { top: boolean; right: boolean; bottom: boolean; left: boolean };
-
 export class MapTile {
+    index;
     row;
     col;
     svg = document.createElementNS(svgNamespace, "g");
     visited = false;
     walls: Walls;
-    constructor(row: number, col: number, walls = { top: true, right: true, bottom: true, left: true }) {
+    constructor(row: number, col: number, index: number, walls = { top: true, right: true, bottom: true, left: true }) {
         this.row = row;
         this.col = col;
         this.walls = walls;
+        this.index = index;
 
         this.svg.dataset["row"] = String(this.row);
         this.svg.dataset["col"] = String(this.col);
@@ -120,11 +120,13 @@ export class MapGenerator {
      * Initializes the grid with all cells having all walls intact and marked as unvisited.
      */
     initializeGrid() {
+        let idx = 0;
         const grid: MapTile[][] = [];
         for (let r = 0; r < this.height; r++) {
             grid[r] = [];
             for (let c = 0; c < this.width; c++) {
-                grid[r][c] = new MapTile(r, c);
+                grid[r][c] = new MapTile(r, c, idx);
+                idx++;
             }
         }
         return grid;
@@ -180,6 +182,7 @@ export class MapGenerator {
         //         ["r", "rl", "rl", "tl"]
         //       ],
         const grid: MapTile[][] = [];
+        let idx = 0;
         for (let row = 0; row < wallData.length; row++) {
             grid[row] = [];
             for (let col = 0; col < wallData[0].length; col++) {
@@ -191,7 +194,8 @@ export class MapGenerator {
                     if (dir == "l") walls.left = true;
                 });
 
-                grid[row][col] = new MapTile(row, col, walls);
+                grid[row][col] = new MapTile(row, col, idx, walls);
+                idx++;
             }
         }
         return grid;

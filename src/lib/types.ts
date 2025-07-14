@@ -30,9 +30,14 @@ export enum GameItem {
 }
 
 export enum MazeStatus {
-    undiscorvered = "undiscorvered",
-    discorvered = "discovered",
+    undiscovered = "undiscovered",
+    discovered = "discovered",
     completed = "completed",
+}
+
+export enum CorridorStatus {
+    undiscovered = "undiscovered",
+    discovered = "discovered",
 }
 
 export type MazeBlueprint = number[][];
@@ -61,5 +66,10 @@ export interface Maze {
     id: string;
     index: number;
     cells: number[][];
+    status: MazeStatus;
     // cells: MazeCell[][];
 }
+
+export type Walls = { top: boolean; right: boolean; bottom: boolean; left: boolean };
+
+export type Corridor = { id: string; status: CorridorStatus; tileIndices: [number, number] };
