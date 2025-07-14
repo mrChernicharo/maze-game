@@ -1,12 +1,5 @@
-import { idMaker } from "../lib/helperFns";
+import { initialWorld } from "../lib/constants";
 import type { World } from "../lib/types";
-
-const initialWorld: World = {
-    id: idMaker(),
-    index: 0,
-    name: "The Adventure Begins",
-    size: [3, 4],
-};
 
 class MainScreen {
     worlds!: Record<string, World>;

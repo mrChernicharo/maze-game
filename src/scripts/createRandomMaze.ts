@@ -217,37 +217,37 @@ function getRandomDoors() {
     return doors;
 }
 
-export function generateMazes(mazeCount = 10) {
-    const mazes: Record<string, Maze> = {};
-    const rowsMinMax = [2, 20];
-    const colsMinMax = [2, 20];
+// export function generateMazes(mazeCount = 10) {
+//     const mazes: Record<string, Maze> = {};
+//     const rowsMinMax = [2, 20];
+//     const colsMinMax = [2, 20];
 
-    let counter = 0;
-    while (counter < mazeCount) {
-        const rows = randRange(rowsMinMax[0], rowsMinMax[1]);
-        const cols = randRange(colsMinMax[0], colsMinMax[1]);
+//     let counter = 0;
+//     while (counter < mazeCount) {
+//         const rows = randRange(rowsMinMax[0], rowsMinMax[1]);
+//         const cols = randRange(colsMinMax[0], colsMinMax[1]);
 
-        const doors = getRandomDoors();
+//         const doors = getRandomDoors();
 
-        const id = idMaker();
-        mazes[id] = {
-            id,
-            index: counter,
-            cells: createRandomMaze(rows, cols, doors),
-            status: MazeStatus.discovered,
-        };
-        counter++;
+//         const id = idMaker();
+//         mazes[id] = {
+//             id,
+//             index: counter,
+//             cells: createRandomMaze(rows, cols, doors),
+//             status: MazeStatus.discovered,
+//         };
+//         counter++;
 
-        // console.log({
-        //     counter,
-        //     generatedMaze,
-        //     doors,
-        //     maze: JSON.stringify(
-        //         generatedMaze.map((line) => line.map((cell) => cell.value)),
-        //         null
-        //     ),
-        // });
-    }
+//         // console.log({
+//         //     counter,
+//         //     generatedMaze,
+//         //     doors,
+//         //     maze: JSON.stringify(
+//         //         generatedMaze.map((line) => line.map((cell) => cell.value)),
+//         //         null
+//         //     ),
+//         // });
+//     }
 
-    return mazes;
-}
+//     return mazes;
+// }

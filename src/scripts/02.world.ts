@@ -1,16 +1,13 @@
-import { COLOR_ARR, MAP_CELL_SIZE, MINI_MAZE_CELL_SIZE, svgNamespace } from "../lib/constants";
+import { COLOR_ARR, colsMinMax, MAP_CELL_SIZE, MINI_MAZE_CELL_SIZE, rowsMinMax, svgNamespace } from "../lib/constants";
 import { idMaker, parseURLQueryParams, randRange, sleep } from "../lib/helperFns";
 import { CorridorStatus, Direction, MazeStatus, type Maze, type Walls, type World } from "../lib/types";
-import { createRandomMaze, generateMazes } from "./createRandomMaze";
+import { createRandomMaze } from "./createRandomMaze";
 import { MapGenerator, MapTile } from "./MapGenerator";
 
 const { worldId } = parseURLQueryParams<{ worldId: string }>();
 console.log("worldId :::", worldId);
 
 const canvas = document.querySelector<SVGSVGElement>("#canvas")!;
-
-const rowsMinMax = [3, 14];
-const colsMinMax = [3, 14];
 
 class WorldMap {
     world!: World;
@@ -35,7 +32,7 @@ class WorldMap {
         this.world = worlds[worldId];
 
         const storedMapsData = JSON.parse(localStorage.getItem("maps")!) as any;
-        if (!storedMapsData) {
+        if (!storedMapsData || !storedMapsData[worldId]) {
             await this.initializeMapsData();
         } else {
             const mapData = storedMapsData[worldId];
@@ -154,8 +151,10 @@ class WorldMap {
         miniMazeRect.setAttribute("width", width + "px");
         miniMazeRect.setAttribute("height", height + "px");
         miniMazeRect.setAttribute("fill", "white");
+
         tile.svg.append(miniMazeRect);
         tile.svg.addEventListener("click", () => this.goToLevelScreen(maze.id));
+        if (maze.status === MazeStatus.completed) tile.svg.setAttribute("fill", "red");
 
         for (let row = 0; row < maze.cells.length; row++) {
             for (let col = 0; col < maze.cells[0].length; col++) {

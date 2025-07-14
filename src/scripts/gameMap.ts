@@ -14,8 +14,8 @@ const mapGenerator = new MapGenerator(dims[0], dims[1]);
 const map = await mapGenerator.generate();
 // console.log(maze);
 
-const rowsMinMax = [2, 16];
-const colsMinMax = [2, 16];
+const rowsMinMax = [3, 12];
+const colsMinMax = [3, 12];
 
 map.forEach((line) => {
     line.forEach((tile) => {

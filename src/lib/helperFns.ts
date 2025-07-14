@@ -1,3 +1,5 @@
+import { worldAdjectives, worldNouns } from "./constants";
+
 export function checkLineIntersectsCircle(
     line: { ax: number; ay: number; bx: number; by: number },
     circle: { cx: number; cy: number; r: number }
@@ -47,4 +49,14 @@ export function idMaker(length = 12) {
 export function parseURLQueryParams<T>() {
     const queryParams = Object.fromEntries(new URLSearchParams(location.search).entries());
     return queryParams as T;
+}
+
+export function createWorldName() {
+    // Get a random adjective
+    const randomAdjective = worldAdjectives[Math.floor(Math.random() * worldAdjectives.length)];
+    // Get a random noun
+    const randomNoun = worldNouns[Math.floor(Math.random() * worldNouns.length)];
+
+    // Combine them to form the world name
+    return `${randomAdjective} ${randomNoun}`;
 }
